@@ -39,6 +39,11 @@ local function drop(section, key)
 end
 
 function M.apply(section, key, actions, label)
+  if label == "DISABLED" then
+    section.disabled[key] = true
+    drop(section, key)
+    return
+  end
   if not (key:match("^[%a]+$") or key == "-" or key == "=") then
     warn(section, "ignored " .. key .. ", unsupported layer key")
     return

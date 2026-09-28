@@ -1,4 +1,5 @@
 mod chord;
+mod send;
 
 use std::fs;
 use std::path::Path;
@@ -222,23 +223,55 @@ fn build_ui(app: &Application, spec: &Path) {
     thread::spawn(place_in_bottom_quarter);
 }
 
+fn set_hint_opacity(address: &str, opacity: i32) {
+    let dispatch = format!(
+        "hl.dsp.window.set_prop({{ window = \"address:{address}\", prop = \"opacity\", value = {opacity} }})"
+    );
+    let _ = Command::new("hyprctl").args(["dispatch", &dispatch]).status();
+}
+
+fn place_in_bottom_quarter() {
+    let mut hidden = false;
+    for _ in 0..30 {
+        let Some(address) = hint_address() else {
+            thread::sleep(Duration::from_millis(20));
+            continue;
+        };
+        if !hidden {
+            set_hint_opacity(&address, 0);
+            hidden = true;
+        }
+        if let Some((address, x, y)) = bottom_quarter_target() {
+            let dispatch = format!(
+                "hl.dsp.window.move({{ window = \"address:{address}\", x = {x}, y = {y} }})"
+            );
+            if Command::new("hyprctl")
+                .args(["dispatch", &dispatch])
+                .status()
+                .is_ok_and(|status| status.success())
+            {
+                set_hint_opacity(&address, 1);
+                return;
+            }
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+    if let Some(address) = hint_address() {
+        set_hint_opacity(&address, 1);
+    }
+}
+
+fn hint_address() -> Option<String> {
+    let clients = hypr_json("clients")?;
+    let hint = clients.iter().find(|client| client["title"] == "Application layer")?;
+    Some(hint["address"].as_str()?.to_string())
+}
+
 /// Center of the display's bottom quarter, as the hint window's top-left corner.
 fn hint_origin(origin_x: i32, origin_y: i32, width: i32, height: i32, hint_w: i32, hint_h: i32) -> (i32, i32) {
     let x = origin_x + (width - hint_w) / 2;
     let y = origin_y + (height * 7 / 8) - (hint_h / 2);
     (x, y)
-}
-
-fn place_in_bottom_quarter() {
-    for _ in 0..30 {
-        if let Some((address, x, y)) = bottom_quarter_target() {
-            let dispatch = format!(
-                "hl.dsp.window.move({{ window = \"address:{address}\", x = {x}, y = {y} }})"
-            );
-            let _ = Command::new("hyprctl").args(["dispatch", &dispatch]).status();
-        }
-        thread::sleep(Duration::from_millis(50));
-    }
 }
 
 fn bottom_quarter_target() -> Option<(String, i32, i32)> {
@@ -277,8 +310,24 @@ fn main() {
     let Some(first) = args.next() else {
         eprintln!("usage: app-layer-hint <pidfile> <spec>");
         eprintln!("       app-layer-hint chord <mod+key>");
+        eprintln!("       app-layer-hint send <window> <sequence>");
         std::process::exit(2);
     };
+    if first == "send" {
+        let Some(window) = args.next() else {
+            eprintln!("usage: app-layer-hint send <window> <sequence>");
+            std::process::exit(2);
+        };
+        let Some(sequence) = args.next() else {
+            eprintln!("usage: app-layer-hint send <window> <sequence>");
+            std::process::exit(2);
+        };
+        if let Err(err) = send::send_sequence(&window, std::path::Path::new(&sequence)) {
+            eprintln!("{err}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if first == "chord" {
         let Some(chord) = args.next() else {
             eprintln!("usage: app-layer-hint chord <mod+key>");

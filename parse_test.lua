@@ -38,6 +38,9 @@ check("several strings stay in order",
 
 check("blank label disables the key", sections.foot.disabled.s and not sections.foot.map.s)
 
+local disabled = parse.parse("f, not-a-chord, DISABLED\n., ctrl+f, DISABLED\n")
+check("DISABLED hides the key without a warning", disabled.disabled.f and not disabled.map.f and #disabled.warnings == 0)
+
 local note = sections.foot.map.x
 check("comma inside quotes is part of the string", note and note.actions[1].text == "a, b" and note.label == "note")
 
