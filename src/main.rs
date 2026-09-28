@@ -1,3 +1,5 @@
+mod chord;
+
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -79,13 +81,21 @@ fn system_font() -> String {
     "JetBrainsMono Nerd Font".into()
 }
 
-fn load_options(path: &Path) -> (String, Vec<(String, String)>) {
+fn load_options(path: &Path) -> (String, Vec<String>, Vec<(String, String)>) {
     let mut application = String::new();
+    let mut warnings = Vec::new();
     let mut options = Vec::new();
     if let Ok(text) = fs::read_to_string(path) {
         for line in text.lines() {
             if let Some(name) = line.strip_prefix("# ") {
                 application = name.trim().to_string();
+                continue;
+            }
+            if let Some(warning) = line.strip_prefix("! ") {
+                let warning = warning.trim();
+                if !warning.is_empty() {
+                    warnings.push(warning.to_string());
+                }
                 continue;
             }
             let mut parts = line.split('\t');
@@ -110,7 +120,7 @@ fn load_options(path: &Path) -> (String, Vec<(String, String)>) {
     if application.is_empty() {
         application = "generic".into();
     }
-    (application, options)
+    (application, warnings, options)
 }
 
 fn replace_previous(pidfile: &Path) {
@@ -141,7 +151,8 @@ fn build_ui(app: &Application, spec: &Path) {
         "window {{ background-color: {bg}; color: {fg}; font-family: \"{font}\"; font-size: 11pt; }}
          .hotkey {{ color: {accent}; font-weight: 700; }}
          .command {{ color: {fg}; }}
-         .application {{ color: {accent}; font-weight: 700; }}",
+         .application {{ color: {accent}; font-weight: 700; }}
+         .warning {{ color: {accent}; }}",
         bg = colors.background,
         fg = colors.foreground,
         accent = colors.accent,
@@ -163,7 +174,7 @@ fn build_ui(app: &Application, spec: &Path) {
         .resizable(false)
         .build();
 
-    let (application, options) = load_options(spec);
+    let (application, warnings, options) = load_options(spec);
     let column = Box::new(Orientation::Vertical, 10);
     column.set_margin_top(16);
     column.set_margin_bottom(16);
@@ -174,6 +185,14 @@ fn build_ui(app: &Application, spec: &Path) {
     heading.set_xalign(0.0);
     heading.add_css_class("application");
     column.append(&heading);
+
+    for warning in &warnings {
+        let label = Label::new(Some(&format!("warning: {warning}")));
+        label.set_xalign(0.0);
+        label.set_wrap(true);
+        label.add_css_class("warning");
+        column.append(&label);
+    }
 
     let grid = Grid::builder().column_spacing(28).row_spacing(8).build();
     for (index, (key, label)) in options.iter().enumerate() {
@@ -197,10 +216,23 @@ fn build_ui(app: &Application, spec: &Path) {
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let Some(pidfile) = args.next().map(std::path::PathBuf::from) else {
+    let Some(first) = args.next() else {
         eprintln!("usage: app-layer-hint <pidfile> <spec>");
+        eprintln!("       app-layer-hint chord <mod+key>");
         std::process::exit(2);
     };
+    if first == "chord" {
+        let Some(chord) = args.next() else {
+            eprintln!("usage: app-layer-hint chord <mod+key>");
+            std::process::exit(2);
+        };
+        if let Err(err) = chord::press_chord(&chord) {
+            eprintln!("{err}");
+            std::process::exit(1);
+        }
+        return;
+    }
+    let pidfile = std::path::PathBuf::from(first);
     let spec = args.next().map(std::path::PathBuf::from).unwrap_or_default();
 
     replace_previous(&pidfile);

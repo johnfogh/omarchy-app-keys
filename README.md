@@ -45,8 +45,20 @@ n, ctrl+t, new tab
 s, ctrl+s,
 ```
 
-Each line is `layer_hotkey, keystroke_sent, label`. Leave a label blank to
-hide that key and do nothing when it is pressed. An application with no
-section uses the generic keys.
+Each line is `layer_hotkey, keystroke_sent, label`. `keystroke_sent` is
+either a chord, such as `ctrl+f`, or a quoted string that is typed into
+the focused application. A chord that uses `super` is given to Hyprland
+instead, so `super+w` runs Hyprland's own binding. In double quotes, `\n`,
+`\t`, `\r`, `\\`, `\"`, and `\xNN` are escapes:
+
+```
+w, "\x1b[119;9u", close
+```
+
+A `[class]` section
+is used only while a window of that class is focused. Its keys take
+priority over the generic keys, and a blank label hides that key. Loading
+the file warns about a repeated layer key and about two keys that send
+the same keystroke.
 
 `` ` `` opens `applications.conf` in the editor.
