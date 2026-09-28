@@ -1,0 +1,9 @@
+[package]
+name = "app-layer-hint"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+glib = "0.20"
+libc = "0.2"
