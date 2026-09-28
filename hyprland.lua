@@ -22,19 +22,12 @@ local app_layer_root_dir = app_layer_root()
 local app_layer_hint = app_layer_root_dir .. "/target/release/app-layer-hint"
 
 -- One file. Lines before the first [class] are the generic hotkeys.
--- A [class] section replaces the generic hotkeys for that window class.
+-- A [class] section overlays matching keys for that window class.
 local app_layer_file = app_layer_root_dir .. "/applications.conf"
--- Every letter, space, minus, and equal can be a layer key. The open config
--- decides which of them send a shortcut.
-local app_layer_keys = {
-  { bind = "space", name = "space" },
-  { bind = "minus", name = "-" },
-  { bind = "equal", name = "=" },
-}
-for code = string.byte("a"), string.byte("z") do
-  local letter = string.char(code)
-  table.insert(app_layer_keys, { bind = letter, name = letter })
-end
+local app_layer_parse = dofile(app_layer_root_dir .. "/parse.lua")
+local app_layer_keys = app_layer_parse.layer_keys()
+local app_layer_action_id = app_layer_parse.action_id
+
 local app_layer_map = {}
 local app_layer_order = {}
 local app_layer_warnings = {}
@@ -43,10 +36,7 @@ local app_layer_class = nil
 local app_layer_target = nil
 local app_layer_target_address = nil
 
-local app_layer_parse = dofile(app_layer_root_dir .. "/parse.lua")
-local app_layer_action_id = app_layer_parse.action_id
-
-local function read_app_layer_file(class)
+local function read_app_layer_file()
   local file = io.open(app_layer_file, "r")
   if not file then
     return app_layer_parse.empty(), {}
@@ -56,9 +46,8 @@ local function read_app_layer_file(class)
   return app_layer_parse.parse(body)
 end
 
-
 local function app_layer_config_for(class)
-  local generic, sections = read_app_layer_file(class)
+  local generic, sections = read_app_layer_file()
   local map = {}
   local order = {}
   local warnings = {}
@@ -92,9 +81,7 @@ local function app_layer_config_for(class)
   local seen = {}
   for _, key in ipairs(order) do
     local command = map[key]
-    if command.label == "DISABLED" then
-      -- A disabled key is not a conflict with anything else.
-    else
+    if command.label ~= "DISABLED" then
       local sent = app_layer_action_id(command.actions)
       local other = seen[sent]
       if other and map[other].label ~= "DISABLED" then
@@ -256,4 +243,3 @@ hl.define_submap("app-commands", "reset", function()
     hl.dispatch(hl.dsp.submap("reset"))
   end)
 end)
-

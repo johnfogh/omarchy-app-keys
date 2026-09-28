@@ -61,6 +61,36 @@ n, ctrl+t, new tab
 ]])
 check("every application section is parsed", all_sections.foot.map.w.label == "quit" and all_sections["brave-browser"].map.n.label == "new tab")
 
+check("shift+f canonical name", parse.key_name("SHIFT+F") == "shift+f")
+check("ctrl+alt+f1 canonical order", parse.key_name("alt+ctrl+f1") == "ctrl+alt+f1")
+check("control alias", parse.key_name("control+a") == "ctrl+a")
+check("minus alias", parse.key_name("shift+minus") == "shift+-")
+check("equal alias", parse.key_name("ctrl+equal") == "ctrl+=")
+check("alt+space reserved", parse.key_name("alt+space") == nil)
+check("super rejected on layer key", parse.key_name("super+w") == nil)
+check("bind string for ctrl+f", parse.bind_string("ctrl+f") == "CTRL + f")
+check("bind string for f12", parse.bind_string("f12") == "F12")
+check("bind string for shift+-", parse.bind_string("shift+-") == "SHIFT + minus")
+
+local modded = parse.parse([[
+shift+f, ctrl+shift+f, find selection
+f2, "help", help
+ctrl+f1, ctrl+shift+p, palette
+]])
+check("modified layer key is stored", modded.map["shift+f"] and modded.map["shift+f"].label == "find selection")
+check("function layer key is stored", modded.map.f2 and modded.map.f2.actions[1].text == "help")
+check("modified function key is stored", modded.map["ctrl+f1"] and modded.map["ctrl+f1"].label == "palette")
+
+local keys = parse.layer_keys()
+local names = {}
+for _, key in ipairs(keys) do
+  names[key.name] = key.bind
+end
+check("layer_keys includes letters", names.f == "f")
+check("layer_keys includes function keys", names.f1 == "F1")
+check("layer_keys includes modifiers", names["ctrl+f"] == "CTRL + f" and names["shift+f2"] == "SHIFT + F2")
+check("layer_keys omits alt+space", names["alt+space"] == nil)
+
 if failed > 0 then
   os.exit(1)
 end

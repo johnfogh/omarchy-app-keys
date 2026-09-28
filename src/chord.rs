@@ -16,6 +16,8 @@ const KEYS: &[(&str, i32)] = &[
     ("y", 21), ("z", 44),
     ("1", 2), ("2", 3), ("3", 4), ("4", 5), ("5", 6), ("6", 7), ("7", 8), ("8", 9), ("9", 10), ("0", 11),
     ("minus", 12), ("-", 12), ("equal", 13), ("=", 13), ("tab", 15), ("space", 57),
+    ("f1", 59), ("f2", 60), ("f3", 61), ("f4", 62), ("f5", 63), ("f6", 64),
+    ("f7", 65), ("f8", 66), ("f9", 67), ("f10", 68), ("f11", 87), ("f12", 88),
     ("super", 125), ("super_l", 125),
 ];
 
@@ -126,5 +128,12 @@ mod tests {
         assert_eq!(parse_chord("").unwrap_err(), "empty chord");
         assert!(parse_chord("super+nope").unwrap_err().contains("unknown key"));
         assert!(parse_chord("logo+w").unwrap_err().contains("unknown key"));
+    }
+
+    #[test]
+    fn function_keys_resolve() {
+        let (key, mods) = parse_chord("ctrl+f2").unwrap();
+        assert_eq!(key, 60);
+        assert_eq!(mods, vec![29]);
     }
 }
