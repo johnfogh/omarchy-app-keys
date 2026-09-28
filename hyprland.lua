@@ -40,6 +40,8 @@ local app_layer_order = {}
 local app_layer_warnings = {}
 local app_layer_active = false
 local app_layer_class = nil
+local app_layer_target = nil
+local app_layer_target_address = nil
 
 local app_layer_parse = dofile(app_layer_root_dir .. "/parse.lua")
 local app_layer_action_id = app_layer_parse.action_id
@@ -133,13 +135,11 @@ local function hide_app_layer_hint()
   ))
 end
 
-local function app_layer_same_window(window)
-  if not window or not window.address or not app_layer_target then
-    return false
+local function window_address(window)
+  if not window or not window.address then
+    return nil
   end
-  local address = tostring(window.address)
-  local target = tostring(app_layer_target)
-  return address == target or ("address:" .. address) == target or address == target:gsub("^address:", "")
+  return tostring(window.address):gsub("^address:", "")
 end
 
 local function app_layer_leave()
@@ -154,18 +154,21 @@ end
 if app_layer_focus_sub then
   app_layer_focus_sub:remove()
 end
-app_layer_focus_sub = hl.on("window.active", function(window)
-  if not app_layer_active or not window then
+app_layer_focus_sub = hl.on("window.active", function()
+  if not app_layer_active then
     return
   end
-  if window.title == "Application layer" or app_layer_same_window(window) then
+  -- The event also fires for the window under the pointer. Only the
+  -- keyboard-focused window should close the layer.
+  local focused = hl.get_active_window()
+  if not focused or focused.title == "Application layer" then
+    return
+  end
+  if window_address(focused) == app_layer_target_address then
     return
   end
   app_layer_leave()
 end)
-
--- Window that was focused when the layer opened. The hint must not receive the shortcut.
-local app_layer_target = nil
 
 local function app_layer_edit()
   app_layer_active = false
@@ -207,6 +210,7 @@ hl.bind("ALT + SPACE", function()
   local window = hl.get_active_window()
   if window and window.title ~= "Application layer" and window.address then
     app_layer_target = "address:" .. window.address
+    app_layer_target_address = window_address(window)
     app_layer_class = window.class
     app_layer_active = true
     app_layer_map, app_layer_order, app_layer_warnings = app_layer_config_for(window.class)

@@ -1,73 +1,84 @@
-# Common in-app hotkeys
+# Application layer
 
-This repository is the Omarchy plugin `jff.app-layer`. Install it with:
+Omarchy plugin `jff.app-layer`. `Alt+Space` opens a hint for the focused window. The next key runs that entry from `applications.conf`, then the layer closes.
+
+Install:
 
 ```
-omarchy plugin add https://github.com/johnfogh/oma_hot_keys.git --yes
+omarchy plugin add https://github.com/johnfogh/oma_hot_keys.git --enable --yes
 ```
 
-The shell loads `Service.qml`, which adds the Hyprland bindings in `hyprland.lua` to `~/.config/hypr/bindings.lua` if they are missing. The hotkeys are read from `applications.conf` in the plugin directory.
+`Service.qml` adds this line to `~/.config/hypr/bindings.lua` when it is missing:
 
-One set of keys runs the same command in whatever application is focused.
-These keys do not launch applications. Launch keys stay on Super+Shift.
+```lua
+dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/jff.app-layer/hyprland.lua")
+```
 
-`Alt+Space` opens the layer. It is bound in `~/.config/hypr/bindings.lua`.
-Each command still needs the keystroke that application actually understands.
-Each command key sends one shortcut to the window that was focused when the
-layer opened. The hint lists the layer key and the standard command name.
+Build the hint program after install:
 
-## Leader
+```
+cargo build --release --manifest-path ~/.config/omarchy/plugins/jff.app-layer/Cargo.toml
+```
 
-`Alt+Space` opens the command layer and leaves a list of every command key
-on screen until the layer closes. The stock on-screen display keeps a single
-truncated line, so this list is a separate window that does not take focus.
-The next key runs one command, then the layer closes. `Escape`, `Alt+Space`
-again, or any other key leaves the layer without running a command.
+## What happens
 
-## Commands
+`Alt+Space` reads `applications.conf` once. It keeps the generic keys and applies the `[class]` section whose name matches the focused window. Other sections are parsed too, but only that window's section overrides the generic keys.
 
-| Key | Command | Sent to the focused application |
-|---|---|---|
-| Space | palette | Ctrl+Shift+P |
-| F | find | Ctrl+F |
-| N | new | Ctrl+N |
-| W | close | Ctrl+W |
-| S | save | Ctrl+S |
-| J | next | Ctrl+Tab |
-| K | previous | Ctrl+Shift+Tab |
+The hint lists the layer key and the label. The application name is at the top. The window stays hidden until it is centered in the bottom quarter of the display, then it appears.
 
-`Super+W` already closes the Hyprland window. Inside this layer, `W` only
-closes the app's current item.
+The next key sends every field on that line except the label, in order, and the layer closes. The hint program does the sending: a chord goes to the focused application, a chord that contains `super` is pressed for Hyprland, and a quoted string is typed into the application.
+
+`Escape`, `Alt+Space`, or focusing a different window closes the hint and leaves the layer without sending anything. `` ` `` opens `applications.conf` in the editor.
 
 ## Config
 
-All hotkeys live in `applications.conf`. Lines before the first `[class]`
-are the generic hotkeys. A section replaces those keys for that Hyprland
-window class:
+`applications.conf` uses one line per hotkey:
+
+```
+layer_hotkey, sent, ..., label
+```
+
+The last comma-separated field is the label shown in the hint. Every field before it is sent. A chord is `ctrl`, `alt`, `shift`, `super`, and a key joined with `+`. A double-quoted string is typed as text. Escapes in double quotes are `\n`, `\t`, `\r`, `\\`, `\"`, and `\xNN`. Single quotes are literal.
 
 ```
 f, ctrl+f, find
-
-[brave-browser]
-n, ctrl+t, new tab
-s, ctrl+s,
+w, super+w, quit
+u, "/usage", "\r", usage
+-, ctrl+-, ctrl+-, ctrl+-, zoom out
 ```
 
-Each line is `layer_hotkey, sent, ..., label`. Every field except the last
-is sent in order. The last field is the label. A sent field is a chord,
-such as `ctrl+f`, or a quoted string typed into the focused application.
-A chord that uses `super` is given to Hyprland instead, so `super+w` runs
-Hyprland's own binding. In double quotes, `\n`, `\t`, `\r`, `\\`, `\"`,
-and `\xNN` are escapes:
+`super+w` runs Hyprland's close-window binding instead of being typed into the application.
+
+Lines before the first `[class]` are the generic keys. A section name is the Hyprland window class. Its lines override the generic key with the same name, and they apply only while that class is focused. A blank label, or the label `DISABLED`, hides the key and sends nothing. `DISABLED` does not produce a warning.
 
 ```
-w, super+w, close
+s, ctrl+s, save
+
+[foot]
+s, DISABLED
+w, super+w, quit
 ```
 
-A `[class]` section
-is used only while a window of that class is focused. Its keys take
-priority over the generic keys, and a blank label hides that key. Loading
-the file warns about a repeated layer key and about two keys that send
-the same keystroke.
+The layer keys are letters, `space`, `-`, and `=`.
 
-`` ` `` opens `applications.conf` in the editor.
+Loading the file warns when the same layer key is defined twice, or when two keys send the same chord or string. Keys labeled `DISABLED` are left out of those warnings.
+
+## Generic keys
+
+| Key | Sent | Label |
+|---|---|---|
+| f | Ctrl+F | find |
+| n | Ctrl+N | new |
+| w | Ctrl+W | close |
+| s | Ctrl+S | save |
+| j | Ctrl+Tab | next |
+| k | Ctrl+Shift+Tab | previous |
+| = | Ctrl+=, three times | zoom in |
+| - | Ctrl+-, three times | zoom out |
+
+## Tests
+
+```
+lua parse_test.lua
+cargo test
+```
