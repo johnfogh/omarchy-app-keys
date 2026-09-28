@@ -6,7 +6,7 @@ This repository is the Omarchy plugin `jff.app-layer`. Install it with:
 omarchy plugin add https://github.com/johnfogh/oma_hot_keys.git --yes
 ```
 
-The shell loads `Service.qml`. The hotkeys themselves are read by Hyprland from `applications.conf` in the plugin directory.
+The shell loads `Service.qml`, which adds the Hyprland bindings in `hyprland.lua` to `~/.config/hypr/bindings.lua` if they are missing. The hotkeys are read from `applications.conf` in the plugin directory.
 
 One set of keys runs the same command in whatever application is focused.
 These keys do not launch applications. Launch keys stay on Super+Shift.

@@ -239,6 +239,10 @@ fn place_in_bottom_quarter() {
         };
         if !hidden {
             set_hint_opacity(&address, 0);
+            let float = format!(
+                "hl.dsp.window.float({{ window = \"address:{address}\", action = \"set\" }})"
+            );
+            let _ = Command::new("hyprctl").args(["dispatch", &float]).status();
             hidden = true;
         }
         if let Some((address, x, y)) = bottom_quarter_target() {
@@ -267,10 +271,18 @@ fn hint_address() -> Option<String> {
     Some(hint["address"].as_str()?.to_string())
 }
 
-/// Center of the display's bottom quarter, as the hint window's top-left corner.
+/// Hyprland window coordinates are the monitor size divided by its scale.
+fn layout_size(width: i32, height: i32, scale: f64) -> (i32, i32) {
+    let scale = if scale > 0.0 { scale } else { 1.0 };
+    ((width as f64 / scale) as i32, (height as f64 / scale) as i32)
+}
+
+/// Center of the display's bottom quarter, clamped so the hint stays on screen.
 fn hint_origin(origin_x: i32, origin_y: i32, width: i32, height: i32, hint_w: i32, hint_h: i32) -> (i32, i32) {
-    let x = origin_x + (width - hint_w) / 2;
-    let y = origin_y + (height * 7 / 8) - (hint_h / 2);
+    let max_x = origin_x + (width - hint_w).max(0);
+    let max_y = origin_y + (height - hint_h).max(0);
+    let x = (origin_x + (width - hint_w) / 2).clamp(origin_x, max_x);
+    let y = (origin_y + (height * 7 / 8) - (hint_h / 2)).clamp(origin_y, max_y);
     (x, y)
 }
 
@@ -289,11 +301,17 @@ fn bottom_quarter_target() -> Option<(String, i32, i32)> {
         .iter()
         .find(|monitor| monitor_id.is_some_and(|id| monitor["id"].as_i64() == Some(id)))
         .or_else(|| monitors.iter().find(|monitor| monitor["focused"] == true))?;
+    let scale = monitor["scale"].as_f64().unwrap_or(1.0);
+    let (width, height) = layout_size(
+        monitor["width"].as_i64()? as i32,
+        monitor["height"].as_i64()? as i32,
+        scale,
+    );
     let (x, y) = hint_origin(
         monitor["x"].as_i64()? as i32,
         monitor["y"].as_i64()? as i32,
-        monitor["width"].as_i64()? as i32,
-        monitor["height"].as_i64()? as i32,
+        width,
+        height,
         hint_w,
         hint_h,
     );
@@ -403,6 +421,9 @@ mod tests {
         let (x, y) = super::hint_origin(0, 0, 3840, 2160, 400, 200);
         assert_eq!(x, 1720);
         assert_eq!(y, 1790);
+        let (_, tall) = super::hint_origin(0, 0, 3840, 2160, 400, 2000);
+        assert_eq!(tall, 160);
+        assert_eq!(super::layout_size(3840, 2160, 1.25), (3072, 1728));
     }
 
     #[test]
