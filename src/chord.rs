@@ -50,8 +50,8 @@ fn emit(file: &mut File, type_: u16, code: u16, value: i32) -> std::io::Result<(
     file.write_all(&event)
 }
 
-/// Press `mod+mod+key` through uinput so Hyprland handles it as a real chord.
-pub fn press_chord(chord: &str) -> Result<(), String> {
+/// Split `mod+mod+key` into a key code and modifier codes, in press order.
+pub fn parse_chord(chord: &str) -> Result<(i32, Vec<i32>), String> {
     let parts: Vec<&str> = chord.split('+').filter(|part| !part.is_empty()).collect();
     let (key_name, mod_names) = parts.split_last().ok_or("empty chord")?;
     let key = lookup(KEYS, key_name)?;
@@ -59,6 +59,12 @@ pub fn press_chord(chord: &str) -> Result<(), String> {
         .iter()
         .map(|name| lookup(MODS, name))
         .collect::<Result<Vec<_>, _>>()?;
+    Ok((key, mods))
+}
+
+/// Press `mod+mod+key` through uinput so Hyprland handles it as a real chord.
+pub fn press_chord(chord: &str) -> Result<(), String> {
+    let (key, mods) = parse_chord(chord)?;
 
     let file = File::options()
         .write(true)
@@ -95,4 +101,30 @@ pub fn press_chord(chord: &str) -> Result<(), String> {
     })();
     let _ = ioctl(fd, UI_DEV_DESTROY, 0);
     result.map_err(|err: std::io::Error| err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_chord;
+
+    #[test]
+    fn super_w_is_logo_then_w() {
+        let (key, mods) = parse_chord("super+w").unwrap();
+        assert_eq!(key, 17);
+        assert_eq!(mods, vec![125]);
+    }
+
+    #[test]
+    fn modifiers_stay_in_press_order() {
+        let (key, mods) = parse_chord("ctrl+shift+tab").unwrap();
+        assert_eq!(key, 15);
+        assert_eq!(mods, vec![29, 42]);
+    }
+
+    #[test]
+    fn empty_and_unknown_chords_fail() {
+        assert_eq!(parse_chord("").unwrap_err(), "empty chord");
+        assert!(parse_chord("super+nope").unwrap_err().contains("unknown key"));
+        assert!(parse_chord("logo+w").unwrap_err().contains("unknown key"));
+    }
 }

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "jff.app-layer",
+  "name": "Application layer",
+  "version": "0.1.0",
+  "author": "jff",
+  "description": "A shared hotkey layer that runs a focused application's commands.",
+  "kinds": ["service"],
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}

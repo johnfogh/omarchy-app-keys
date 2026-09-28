@@ -3,12 +3,14 @@ mod chord;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 
 use gtk::prelude::*;
 use gtk::{gio, glib, Application, ApplicationWindow, Box, CssProvider, Grid, Label, Orientation};
 
 const COLUMNS: i32 = 3;
-const APP_ID: &str = "org.omarchy.AppLayerHint";
+const APP_ID: &str = "jff.AppLayerHint";
 
 struct Colors {
     background: String,
@@ -81,32 +83,30 @@ fn system_font() -> String {
     "JetBrainsMono Nerd Font".into()
 }
 
-fn load_options(path: &Path) -> (String, Vec<String>, Vec<(String, String)>) {
+fn parse_hint(text: &str) -> (String, Vec<String>, Vec<(String, String)>) {
     let mut application = String::new();
     let mut warnings = Vec::new();
     let mut options = Vec::new();
-    if let Ok(text) = fs::read_to_string(path) {
-        for line in text.lines() {
-            if let Some(name) = line.strip_prefix("# ") {
-                application = name.trim().to_string();
-                continue;
-            }
-            if let Some(warning) = line.strip_prefix("! ") {
-                let warning = warning.trim();
-                if !warning.is_empty() {
-                    warnings.push(warning.to_string());
-                }
-                continue;
-            }
-            let mut parts = line.split('\t');
-            let Some(key) = parts.next().filter(|key| !key.is_empty()) else {
-                continue;
-            };
-            let Some(label) = parts.next() else {
-                continue;
-            };
-            options.push((key.to_string(), label.to_string()));
+    for line in text.lines() {
+        if let Some(name) = line.strip_prefix("# ") {
+            application = name.trim().to_string();
+            continue;
         }
+        if let Some(warning) = line.strip_prefix("! ") {
+            let warning = warning.trim();
+            if !warning.is_empty() {
+                warnings.push(warning.to_string());
+            }
+            continue;
+        }
+        let mut parts = line.split('\t');
+        let Some(key) = parts.next().filter(|key| !key.is_empty()) else {
+            continue;
+        };
+        let Some(label) = parts.next() else {
+            continue;
+        };
+        options.push((key.to_string(), label.to_string()));
     }
     if options.is_empty() {
         options = ["space palette", "f find", "n new", "w close", "s save", "j next", "k previous"]
@@ -121,6 +121,13 @@ fn load_options(path: &Path) -> (String, Vec<String>, Vec<(String, String)>) {
         application = "generic".into();
     }
     (application, warnings, options)
+}
+
+fn load_options(path: &Path) -> (String, Vec<String>, Vec<(String, String)>) {
+    match fs::read_to_string(path) {
+        Ok(text) => parse_hint(&text),
+        Err(_) => parse_hint(""),
+    }
 }
 
 fn replace_previous(pidfile: &Path) {
@@ -212,6 +219,57 @@ fn build_ui(app: &Application, spec: &Path) {
     column.append(&grid);
     window.set_child(Some(&column));
     window.present();
+    thread::spawn(place_in_bottom_quarter);
+}
+
+/// Center of the display's bottom quarter, as the hint window's top-left corner.
+fn hint_origin(origin_x: i32, origin_y: i32, width: i32, height: i32, hint_w: i32, hint_h: i32) -> (i32, i32) {
+    let x = origin_x + (width - hint_w) / 2;
+    let y = origin_y + (height * 7 / 8) - (hint_h / 2);
+    (x, y)
+}
+
+fn place_in_bottom_quarter() {
+    for _ in 0..30 {
+        if let Some((address, x, y)) = bottom_quarter_target() {
+            let dispatch = format!(
+                "hl.dsp.window.move({{ window = \"address:{address}\", x = {x}, y = {y} }})"
+            );
+            let _ = Command::new("hyprctl").args(["dispatch", &dispatch]).status();
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+}
+
+fn bottom_quarter_target() -> Option<(String, i32, i32)> {
+    let clients = hypr_json("clients")?;
+    let monitors = hypr_json("monitors")?;
+    let hint = clients.iter().find(|client| client["title"] == "Application layer")?;
+    let hint_size = hint.get("size")?.as_array()?;
+    let hint_w = hint_size.first()?.as_i64()? as i32;
+    let hint_h = hint_size.get(1)?.as_i64()? as i32;
+    if hint_w <= 0 || hint_h <= 0 {
+        return None;
+    }
+    let monitor_id = hint.get("monitor").and_then(|value| value.as_i64());
+    let monitor = monitors
+        .iter()
+        .find(|monitor| monitor_id.is_some_and(|id| monitor["id"].as_i64() == Some(id)))
+        .or_else(|| monitors.iter().find(|monitor| monitor["focused"] == true))?;
+    let (x, y) = hint_origin(
+        monitor["x"].as_i64()? as i32,
+        monitor["y"].as_i64()? as i32,
+        monitor["width"].as_i64()? as i32,
+        monitor["height"].as_i64()? as i32,
+        hint_w,
+        hint_h,
+    );
+    Some((hint["address"].as_str()?.to_string(), x, y))
+}
+
+fn hypr_json(kind: &str) -> Option<Vec<serde_json::Value>> {
+    let output = Command::new("hyprctl").args([kind, "-j"]).output().ok()?;
+    serde_json::from_slice(&output.stdout).ok()
 }
 
 fn main() {
@@ -259,4 +317,49 @@ fn main() {
     let status = app.run_with_args::<&str>(&[]);
     remove_own_pidfile(&pidfile);
     std::process::exit(status.into());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_hint, toml_hex};
+
+    #[test]
+    fn hint_shows_application_warnings_and_keys() {
+        let (application, warnings, options) = parse_hint(
+            "# brave-browser\n! n and d both send ctrl+j\n! \nf\tfind\nn\tnew tab\n`\tedit\n",
+        );
+        assert_eq!(application, "brave-browser");
+        assert_eq!(warnings, vec!["n and d both send ctrl+j".to_string()]);
+        assert_eq!(
+            options,
+            vec![
+                ("f".to_string(), "find".to_string()),
+                ("n".to_string(), "new tab".to_string()),
+                ("`".to_string(), "edit".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_hint_uses_generic_commands() {
+        let (application, warnings, options) = parse_hint("");
+        assert_eq!(application, "generic");
+        assert!(warnings.is_empty());
+        assert_eq!(options[0], ("space".to_string(), "palette".to_string()));
+        assert_eq!(options.len(), 7);
+    }
+
+    #[test]
+    fn hint_sits_in_the_bottom_quarter() {
+        let (x, y) = super::hint_origin(0, 0, 3840, 2160, 400, 200);
+        assert_eq!(x, 1720);
+        assert_eq!(y, 1790);
+    }
+
+    #[test]
+    fn theme_color_reads_quoted_hex() {
+        let text = "background = \"#1B1B1B\"\nforeground = \"#efebdc\"\n";
+        assert_eq!(toml_hex(text, "background").as_deref(), Some("#1B1B1B"));
+        assert_eq!(toml_hex(text, "missing"), None);
+    }
 }

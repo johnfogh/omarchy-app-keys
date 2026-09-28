@@ -1,5 +1,13 @@
 # Common in-app hotkeys
 
+This repository is the Omarchy plugin `jff.app-layer`. Install it with:
+
+```
+omarchy plugin add https://github.com/johnfogh/oma_hot_keys.git --yes
+```
+
+The shell loads `Service.qml`. The hotkeys themselves are read by Hyprland from `applications.conf` in the plugin directory.
+
 One set of keys runs the same command in whatever application is focused.
 These keys do not launch applications. Launch keys stay on Super+Shift.
 
@@ -45,11 +53,12 @@ n, ctrl+t, new tab
 s, ctrl+s,
 ```
 
-Each line is `layer_hotkey, keystroke_sent, label`. `keystroke_sent` is
-either a chord, such as `ctrl+f`, or a quoted string that is typed into
-the focused application. A chord that uses `super` is given to Hyprland
-instead, so `super+w` runs Hyprland's own binding. In double quotes, `\n`,
-`\t`, `\r`, `\\`, `\"`, and `\xNN` are escapes:
+Each line is `layer_hotkey, sent, ..., label`. Every field except the last
+is sent in order. The last field is the label. A sent field is a chord,
+such as `ctrl+f`, or a quoted string typed into the focused application.
+A chord that uses `super` is given to Hyprland instead, so `super+w` runs
+Hyprland's own binding. In double quotes, `\n`, `\t`, `\r`, `\\`, `\"`,
+and `\xNN` are escapes:
 
 ```
 w, "\x1b[119;9u", close
