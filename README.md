@@ -1,23 +1,23 @@
 # Application layer
 
-Omarchy plugin `jff.app-layer`. `Alt+Space` opens a hint for the focused window. The next key runs that entry from `applications.conf`, then the layer closes.
+Omarchy plugin `omarchy-app-keys`. `Alt+Space` opens a hint for the focused window. The next key runs that entry from `applications.conf`, then the layer closes.
 
 Install:
 
 ```
-omarchy plugin add https://github.com/johnfogh/oma_hot_keys.git --enable --yes
+omarchy plugin add https://github.com/johnfogh/omarchy-app-keys.git --enable --yes
 ```
 
 `Service.qml` adds this line to `~/.config/hypr/bindings.lua` when it is missing:
 
 ```lua
-dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/jff.app-layer/hyprland.lua")
+dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-app-keys/hyprland.lua")
 ```
 
 Build the hint program after install:
 
 ```
-cargo build --release --manifest-path ~/.config/omarchy/plugins/jff.app-layer/Cargo.toml
+cargo build --release --manifest-path ~/.config/omarchy/plugins/omarchy-app-keys/Cargo.toml
 ```
 
 ## What happens

@@ -1,4 +1,4 @@
--- Installed with the jff.app-layer Omarchy plugin.
+-- Installed with the omarchy-app-keys Omarchy plugin.
 -- Application command layer. Alt+Space enters it; the next key runs one
 -- command and the layer closes. Escape or any other key leaves it.
 -- The stock OSD keeps a single elided line, so the option list is its own
@@ -15,7 +15,7 @@ local function app_layer_root()
   if root then
     return root
   end
-  return os.getenv("HOME") .. "/.config/omarchy/plugins/jff.app-layer"
+  return os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-app-keys"
 end
 
 local app_layer_root_dir = app_layer_root()

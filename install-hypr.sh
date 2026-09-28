@@ -3,14 +3,14 @@
 set -euo pipefail
 
 bindings="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/bindings.lua"
-marker='dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/jff.app-layer/hyprland.lua")'
+marker='dofile(os.getenv("HOME") .. "/.config/omarchy/plugins/omarchy-app-keys/hyprland.lua")'
 
 mkdir -p "$(dirname "$bindings")"
 touch "$bindings"
 
-if grep -qF 'plugins/jff.app-layer/hyprland.lua' "$bindings"; then
+if grep -qF 'plugins/omarchy-app-keys/hyprland.lua' "$bindings"; then
   exit 0
 fi
 
-printf '\n-- Application layer bindings. Installed by the jff.app-layer plugin.\n%s\n' "$marker" >> "$bindings"
+printf '\n-- Application layer bindings. Installed by the omarchy-app-keys plugin.\n%s\n' "$marker" >> "$bindings"
 hyprctl reload >/dev/null 2>&1 || true
