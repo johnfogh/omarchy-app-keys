@@ -61,7 +61,7 @@ Hyprland's own binding. In double quotes, `\n`, `\t`, `\r`, `\\`, `\"`,
 and `\xNN` are escapes:
 
 ```
-w, "\x1b[119;9u", close
+w, super+w, close
 ```
 
 A `[class]` section
