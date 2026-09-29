@@ -2,6 +2,8 @@
 
 Omarchy plugin `omarchy-app-keys`. `Alt+Space` opens a hint for the focused window. The next layer key runs that entry from `applications.conf`, then the layer closes. `F1` opens an in-app configuration dialog.
 
+Config file (installed): `~/.config/omarchy/plugins/omarchy-app-keys/applications.conf`
+
 ## Install
 
 ```
@@ -19,7 +21,7 @@ After `omarchy plugin update omarchy-app-keys`, rebuild the release binary, run 
 
 ## What happens
 
-`Alt+Space` reads `applications.conf` once. It keeps the generic keys and applies the `[class]` section whose name matches the focused window. Other sections are parsed too, but only that window’s section overlays the generic keys.
+`Alt+Space` reads `applications.conf` once. It keeps the generic (global) keys and applies the `[class]` section whose name matches the focused window. Other sections are parsed too, but only that window’s section overlays the generic keys.
 
 The hint lists each layer key and its label, with the window class at the top, plus `f1` / `configure`. The window stays hidden until it is centered in the bottom quarter of the display, then it appears.
 
@@ -29,18 +31,26 @@ The next matching key sends every field on that line except the label, in order,
 - a chord that contains `super` is pressed for Hyprland (so `super+w` can close the window)
 - a quoted string is typed into the application
 
-`Escape`, `Alt+Space`, an unbound key, or focusing a different window closes the hint and leaves the layer without sending. `F1` leaves the layer and opens the configuration dialog for the defaults and the focused class.
+`Escape`, `Alt+Space`, an unbound key, or focusing a different window closes the hint and leaves the layer without sending. `F1` leaves the layer and opens the configuration dialog for globals and the focused class.
 
 ## Configuration dialog
 
 `F1` in the layer runs `app-layer-hint edit <applications.conf> <class>`.
 
-- Three editable columns: **Key**, **Sent**, **Label**
-- Defaults first (muted), then the `[class]` section (accent)
-- Arrow keys move between cells
-- A blank row stays at the end of each section; filling it adds another
-- **Submit** writes both the generic defaults and the current class back to `applications.conf`
-- **Cancel** or Escape closes without saving
+- Window title is `Configuration` plus the application class (for example `Configuration foot`)
+- One continuous table: **Key**, **Sent**, **Label**, **Global**
+- Globals first (muted) with Global = `x`; application rows (accent) with Global = space
+- Global is a one-character field; **space** or **x** toggles it. It uses the same row highlight as the other columns
+- Centered content column with **2/16** side margins, plus a 2-character inner margin around the table
+- Theme colors come from `~/.local/state/omarchy/current/theme/colors.toml`
+- **Up/Down** select a row; **Left/Right** move between Key / Sent / Label / Global in that row
+- Hotkeys with on-screen hints:
+  - **Ctrl+X** — delete the selected row (dialog stays open)
+  - **Esc** — cancel (`Cancel  Esc`)
+  - **Ctrl+S** — save (`Submit  Ctrl+S`)
+- One trailing blank at the bottom; filling it adds another
+- **Submit** / Ctrl+S writes globals and the current class back to `applications.conf`
+- **Cancel** / Esc closes without saving
 
 Bare `F1` is reserved for this dialog. Modified keys such as `shift+f1` can still be layer hotkeys.
 
@@ -81,7 +91,7 @@ u, "/usage", "\r", usage
 
 ### Sections and disabling
 
-Lines before the first `[class]` are the generic keys. A section name is the Hyprland window class. Its lines override the generic key with the same name, and they apply only while that class is focused.
+Lines before the first `[class]` are the global keys. A section name is the Hyprland window class. Its lines override the global key with the same name, and they apply only while that class is focused.
 
 A blank label, or the label `DISABLED`, hides the key and sends nothing. `DISABLED` does not produce a warning.
 

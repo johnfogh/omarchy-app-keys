@@ -148,9 +148,10 @@ app_layer_focus_sub = hl.on("window.active", function()
   -- The event also fires for the window under the pointer. Only the
   -- keyboard-focused window should close the layer.
   local focused = hl.get_active_window()
+  local title = focused and focused.title
   if not focused
-    or focused.title == "Application layer"
-    or focused.title == "Application layer config"
+    or title == "Application layer"
+    or (type(title) == "string" and title:match("^Configuration"))
   then
     return
   end

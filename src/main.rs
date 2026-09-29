@@ -19,6 +19,8 @@ pub(crate) struct Colors {
     pub background: String,
     pub foreground: String,
     pub accent: String,
+    pub selection_background: String,
+    pub selection_foreground: String,
 }
 
 pub(crate) fn theme_colors() -> Colors {
@@ -26,6 +28,8 @@ pub(crate) fn theme_colors() -> Colors {
         background: "#1B1B1B".into(),
         foreground: "#efebdc".into(),
         accent: "#e75a50".into(),
+        selection_background: "#e75a50".into(),
+        selection_foreground: "#1B1B1B".into(),
     };
     let path = dirs_home().join(".local/state/omarchy/current/theme/colors.toml");
     let Ok(text) = fs::read_to_string(path) else {
@@ -35,10 +39,19 @@ pub(crate) fn theme_colors() -> Colors {
         ("background", &mut colors.background),
         ("foreground", &mut colors.foreground),
         ("accent", &mut colors.accent),
+        ("selection_background", &mut colors.selection_background),
+        ("selection_foreground", &mut colors.selection_foreground),
     ] {
         if let Some(value) = toml_hex(&text, name) {
             *slot = value;
         }
+    }
+    // Fall back to accent/background when a theme omits selection_* keys.
+    if toml_hex(&text, "selection_background").is_none() {
+        colors.selection_background = colors.accent.clone();
+    }
+    if toml_hex(&text, "selection_foreground").is_none() {
+        colors.selection_foreground = colors.background.clone();
     }
     colors
 }
