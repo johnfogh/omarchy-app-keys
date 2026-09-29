@@ -67,6 +67,8 @@ check("control alias", parse.key_name("control+a") == "ctrl+a")
 check("minus alias", parse.key_name("shift+minus") == "shift+-")
 check("equal alias", parse.key_name("ctrl+equal") == "ctrl+=")
 check("alt+space reserved", parse.key_name("alt+space") == nil)
+check("f1 reserved for configure", parse.key_name("f1") == nil)
+check("shift+f1 still allowed", parse.key_name("shift+f1") == "shift+f1")
 check("super rejected on layer key", parse.key_name("super+w") == nil)
 check("bind string for ctrl+f", parse.bind_string("ctrl+f") == "CTRL + f")
 check("bind string for f12", parse.bind_string("f12") == "F12")
@@ -87,7 +89,8 @@ for _, key in ipairs(keys) do
   names[key.name] = key.bind
 end
 check("layer_keys includes letters", names.f == "f")
-check("layer_keys includes function keys", names.f1 == "F1")
+check("layer_keys omits bare f1", names.f1 == nil)
+check("layer_keys includes other function keys", names.f2 == "F2")
 check("layer_keys includes modifiers", names["ctrl+f"] == "CTRL + f" and names["shift+f2"] == "SHIFT + F2")
 check("layer_keys omits alt+space", names["alt+space"] == nil)
 

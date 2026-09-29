@@ -94,9 +94,12 @@ function M.key_name(key)
     return ia < ib
   end)
 
-  -- Alt+Space toggles the layer; keep it reserved.
+  -- Alt+Space toggles the layer; bare F1 opens the config dialog.
   if base == "space" and #mods == 1 and mods[1] == "alt" then
     return nil, "alt+space is reserved"
+  end
+  if base == "f1" and #mods == 0 then
+    return nil, "f1 is reserved for the configuration dialog"
   end
 
   if #mods == 0 then
@@ -341,7 +344,9 @@ function M.layer_keys()
       else
         canonical = table.concat(mods, "+") .. "+" .. base
       end
-      if not (base == "space" and #mods == 1 and mods[1] == "alt") then
+      local reserved = (base == "space" and #mods == 1 and mods[1] == "alt")
+        or (base == "f1" and #mods == 0)
+      if not reserved then
         table.insert(keys, {
           name = canonical,
           bind = M.bind_string(canonical),

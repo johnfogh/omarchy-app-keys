@@ -107,7 +107,7 @@ local function show_app_layer_hint()
         spec:write(key, "\t", command.label, "\n")
       end
     end
-    spec:write("`\tedit\n")
+    spec:write("f1\tconfigure\n")
     spec:close()
   end
   hl.exec_cmd(string.format("setsid %s %s %s", app_layer_hint, app_layer_pid, app_layer_spec))
@@ -148,7 +148,10 @@ app_layer_focus_sub = hl.on("window.active", function()
   -- The event also fires for the window under the pointer. Only the
   -- keyboard-focused window should close the layer.
   local focused = hl.get_active_window()
-  if not focused or focused.title == "Application layer" then
+  if not focused
+    or focused.title == "Application layer"
+    or focused.title == "Application layer config"
+  then
     return
   end
   if window_address(focused) == app_layer_target_address then
@@ -157,11 +160,17 @@ app_layer_focus_sub = hl.on("window.active", function()
   app_layer_leave()
 end)
 
-local function app_layer_edit()
+local function app_layer_configure()
   app_layer_active = false
   hide_app_layer_hint()
-  hl.exec_cmd("omarchy-launch-editor " .. string.format("%q", app_layer_file))
+  local class = app_layer_class or ""
   hl.dispatch(hl.dsp.submap("reset"))
+  hl.exec_cmd(string.format(
+    "setsid %s edit %s %s",
+    string.format("%q", app_layer_hint),
+    string.format("%q", app_layer_file),
+    string.format("%q", class)
+  ))
 end
 
 local function app_layer_send(layer_key)
@@ -235,7 +244,7 @@ hl.define_submap("app-commands", "reset", function()
     bind_command(key.bind, key.name)
   end
 
-  hl.bind("grave", app_layer_edit, { description = "Application layer: edit config" })
+  hl.bind("F1", app_layer_configure, { description = "Application layer: configure" })
 
   hl.bind("catchall", function()
     app_layer_active = false

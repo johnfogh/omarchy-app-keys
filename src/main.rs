@@ -1,4 +1,6 @@
 mod chord;
+mod conf;
+mod edit;
 mod send;
 
 use std::fs;
@@ -13,13 +15,13 @@ use gtk::{gio, glib, Application, ApplicationWindow, Box, CssProvider, Grid, Lab
 const COLUMNS: i32 = 3;
 const APP_ID: &str = "jff.AppLayerHint";
 
-struct Colors {
-    background: String,
-    foreground: String,
-    accent: String,
+pub(crate) struct Colors {
+    pub background: String,
+    pub foreground: String,
+    pub accent: String,
 }
 
-fn theme_colors() -> Colors {
+pub(crate) fn theme_colors() -> Colors {
     let mut colors = Colors {
         background: "#1B1B1B".into(),
         foreground: "#efebdc".into(),
@@ -55,11 +57,11 @@ fn toml_hex(text: &str, key: &str) -> Option<String> {
     None
 }
 
-fn dirs_home() -> std::path::PathBuf {
+pub(crate) fn dirs_home() -> std::path::PathBuf {
     std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_default()
 }
 
-fn system_font() -> String {
+pub(crate) fn system_font() -> String {
     if let Ok(output) = Command::new("omarchy").args(["font", "current"]).output() {
         if output.status.success() {
             let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -329,8 +331,21 @@ fn main() {
         eprintln!("usage: app-layer-hint <pidfile> <spec>");
         eprintln!("       app-layer-hint chord <mod+key>");
         eprintln!("       app-layer-hint send <window> <sequence>");
+        eprintln!("       app-layer-hint edit <applications.conf> <class>");
         std::process::exit(2);
     };
+    if first == "edit" {
+        let Some(path) = args.next() else {
+            eprintln!("usage: app-layer-hint edit <applications.conf> <class>");
+            std::process::exit(2);
+        };
+        let class = args.next().unwrap_or_default();
+        if let Err(err) = edit::run(std::path::Path::new(&path), &class) {
+            eprintln!("{err}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if first == "send" {
         let Some(window) = args.next() else {
             eprintln!("usage: app-layer-hint send <window> <sequence>");
@@ -393,7 +408,7 @@ mod tests {
     #[test]
     fn hint_shows_application_warnings_and_keys() {
         let (application, warnings, options) = parse_hint(
-            "# brave-browser\n! n and d both send ctrl+j\n! \nf\tfind\nn\tnew tab\n`\tedit\n",
+            "# brave-browser\n! n and d both send ctrl+j\n! \nf\tfind\nn\tnew tab\nf1\tconfigure\n",
         );
         assert_eq!(application, "brave-browser");
         assert_eq!(warnings, vec!["n and d both send ctrl+j".to_string()]);
@@ -402,7 +417,7 @@ mod tests {
             vec![
                 ("f".to_string(), "find".to_string()),
                 ("n".to_string(), "new tab".to_string()),
-                ("`".to_string(), "edit".to_string()),
+                ("f1".to_string(), "configure".to_string()),
             ]
         );
     }

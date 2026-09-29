@@ -1,6 +1,6 @@
 # Application layer
 
-Omarchy plugin `omarchy-app-keys`. `Alt+Space` opens a hint for the focused window. The next layer key runs that entry from `applications.conf`, then the layer closes.
+Omarchy plugin `omarchy-app-keys`. `Alt+Space` opens a hint for the focused window. The next layer key runs that entry from `applications.conf`, then the layer closes. `F1` opens an in-app configuration dialog.
 
 ## Install
 
@@ -21,7 +21,7 @@ After `omarchy plugin update omarchy-app-keys`, rebuild the release binary, run 
 
 `Alt+Space` reads `applications.conf` once. It keeps the generic keys and applies the `[class]` section whose name matches the focused window. Other sections are parsed too, but only that window’s section overlays the generic keys.
 
-The hint lists each layer key and its label, with the window class at the top. The window stays hidden until it is centered in the bottom quarter of the display, then it appears.
+The hint lists each layer key and its label, with the window class at the top, plus `f1` / `configure`. The window stays hidden until it is centered in the bottom quarter of the display, then it appears.
 
 The next matching key sends every field on that line except the label, in order, and the layer closes. The hint program does the sending:
 
@@ -29,7 +29,20 @@ The next matching key sends every field on that line except the label, in order,
 - a chord that contains `super` is pressed for Hyprland (so `super+w` can close the window)
 - a quoted string is typed into the application
 
-`Escape`, `Alt+Space`, an unbound key, or focusing a different window closes the hint and leaves the layer without sending. `` ` `` opens `applications.conf` in the editor.
+`Escape`, `Alt+Space`, an unbound key, or focusing a different window closes the hint and leaves the layer without sending. `F1` leaves the layer and opens the configuration dialog for the defaults and the focused class.
+
+## Configuration dialog
+
+`F1` in the layer runs `app-layer-hint edit <applications.conf> <class>`.
+
+- Three editable columns: **Key**, **Sent**, **Label**
+- Defaults first (muted), then the `[class]` section (accent)
+- Arrow keys move between cells
+- A blank row stays at the end of each section; filling it adds another
+- **Submit** writes both the generic defaults and the current class back to `applications.conf`
+- **Cancel** or Escape closes without saving
+
+Bare `F1` is reserved for this dialog. Modified keys such as `shift+f1` can still be layer hotkeys.
 
 ## Config
 
@@ -45,7 +58,7 @@ The last comma-separated field is the label shown in the hint. Every field betwe
 
 Base keys: `a`–`z`, `space`, `-`, `=`, and `f1`–`f12`.
 
-Optional modifiers on the layer key: `ctrl` (also `control`), `alt`, and `shift`, joined with `+` in any order (stored as `ctrl`, then `alt`, then `shift`). `super` is not allowed on a layer key. `Alt+Space` is reserved for entering and leaving the layer.
+Optional modifiers on the layer key: `ctrl` (also `control`), `alt`, and `shift`, joined with `+` in any order (stored as `ctrl`, then `alt`, then `shift`). `super` is not allowed on a layer key. Reserved: `Alt+Space` (the layer itself) and bare `F1` (configure).
 
 ```
 f, ctrl+f, find
